@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ميتالو برو | MetalloPro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/duo.css">
+<link rel="stylesheet" href="css/v6.css">
+</head>
+<body class="mode-layman">
+
+  <!-- TOP HEADER -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="menu-btn" onclick="toggleDrawer(true)" title="فهرس الوحدات الـ 30">☰</button>
+        <div class="seg">
+          <button id="bt-l" class="on" onclick="setMode('layman')">المرشد التفاعلي</button>
+          <button id="bt-a" onclick="setMode('academic')">المستوى المتقدم</button>
+        </div>
+      </div>
+
+      <div class="brand-logo">Metallo<span>Pro</span></div>
+
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="background:#131f38;border:1px solid #263859;border-radius:999px;padding:5px 12px;display:flex;align-items:center;gap:6px;font-size:13px">
+          <span style="color:#fbbf24">★</span>
+          <b class="mono" style="color:#fbbf24" id="hud-xp">45</b>
+          <span style="font-size:11px;color:#94a3b8">XP</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- SLIDE-OUT DRAWER FOR ALL 30 MODULES -->
+  <div class="drawer-backdrop" id="drawer-bg" onclick="toggleDrawer(false)"></div>
+  <aside class="drawer" id="drawer">
+    <div style="padding:14px 16px;border-bottom:1px solid #1e2d4a;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <h3 style="font-size:15px;color:#34d399">فهرس المختبرات (31 وحدة)</h3>
+        <small style="font-size:11px;color:#64748b" id="hud-rank">الرتبة: مبتدئ</small>
+      </div>
+      <button class="menu-btn" style="width:32px;height:32px;font-size:15px" onclick="toggleDrawer(false)">✕</button>
+    </div>
+    <div style="padding:8px 12px;border-bottom:1px solid #1e2d4a"><input type="text" id="nav-q" placeholder="🔍 ابحث عن وحدة…" oninput="filterNav(this.value)" style="width:100%;background:#070d19;border:1px solid #1e2d4a;border-radius:10px;padding:8px 10px;color:#f1f5f9;font-family:inherit"></div>
+    <nav class="nav-list" id="nav"></nav>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="container-main">
+
+    <!-- ==================== VIEW 1: DUOLINGO-STYLE ZERO-TO-HERO ACADEMY ==================== -->
+    <section id="path-view" class="hidden">
+      <div class="path-wrapper" style="max-width:680px">
+        <div style="text-align:center;margin-bottom:16px">
+          <span class="tag" style="font-size:12px;padding:4px 12px">أكاديمية ميتالو التفاعلية (من الصفر للاحتراف)</span>
+          <h2 style="font-size:22px;font-weight:900;color:#ffffff;margin-top:6px">رحلة احتراف هندسة المواد والمعادن</h2>
+          <p style="font-size:13px;color:#94a3b8;margin-top:4px">تعلم خطوة بخطوة كأنك تلعب: اقرأ القصة المبسطة، أجب عن التحديات، وافتح المختبرات المتقدمة!</p>
+        </div>
+
+        <!-- Top XP, Hearts & Daily Streak Banner -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px">
+          <div class="xp-pill" onclick="claimReward()">
+            <div class="xp-coin mono">XP</div>
+            <div>
+              <div style="font-size:12px;color:#94a3b8;font-weight:700">نقاط الخبرة</div>
+              <div style="font-size:15px;color:#fbbf24;font-weight:900" class="mono" id="path-xp-val">45 XP</div>
+            </div>
+          </div>
+          <div class="xp-pill">
+            <span style="font-size:28px">❤️</span>
+            <div>
+              <div style="font-size:12px;color:#94a3b8;font-weight:700">القلوب</div>
+              <div style="font-size:15px;color:#fb7185;font-weight:900" class="mono" id="path-hearts-val">5 / 5</div>
+            </div>
+          </div>
+          <div class="xp-pill" onclick="claimReward()">
+            <span style="font-size:28px">🔥</span>
+            <div>
+              <div style="font-size:12px;color:#94a3b8;font-weight:700">الحماس اليومي</div>
+              <div style="font-size:13px;color:#34d399;font-weight:800" id="path-rew-txt">3 أيام متتالية</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Duolingo Units & Winding Nodes Container -->
+        <button class="trophy-btn" style="width:100%;margin-bottom:16px" onclick="startReview()">🧠 المراجعة الذكية (<span id="rv-n">0</span> سؤال للتثبيت)</button>
+        <div id="duo-path-container"></div>
+      </div>
+    </section>
+
+    <!-- ==================== DUOLINGO LESSON POPUP MODAL ==================== -->
+    <div id="lesson-modal" class="lesson-modal hidden">
+      <div class="lesson-inner">
+        <div class="lesson-top">
+          <button class="menu-btn" onclick="closeLesson()" title="إغلاق الدرس">✕</button>
+          <div class="prog-track"><div id="les-prog" class="prog-fill" style="width:20%"></div></div>
+          <div style="display:flex;align-items:center;gap:6px;font-weight:800;color:#fb7185" class="mono">
+            <span>❤️</span><span id="les-hearts">5</span>
+          </div>
+        </div>
+
+        <div id="les-body" class="duo-card"></div>
+
+        <div id="les-footer" style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:auto;padding-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 2: ACTIVE LAB MODULE ==================== -->
+    <section id="lab-view">
+      <!-- Current Module Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="tag" id="mod-badge">M01</span>
+          <h2 style="font-size:19px;font-weight:900;color:#ffffff" id="mod-title">مخطط الطور Fe-Fe₃C وقاعدة الرافعة</h2>
+        </div>
+        <small style="font-size:12px;color:#64748b;direction:ltr" class="mono" id="mod-en">Fe–Fe₃C & Lever Rule</small>
+      </div>
+
+      <!-- Glowing المرشد ميتالو Card -->
+      <div class="metallo-banner" id="tutor" style="margin-bottom:16px">
+        <div class="metallo-head">
+          <div class="metallo-title">
+            <span id="tut-av">🎒</span>
+            <span>المرشد ميتالو</span>
+            <span style="font-size:12px;color:#a7f3d0;font-weight:600" id="tut-t"></span>
+          </div>
+          <span class="tag" id="tut-b">شرح تفاعلي</span>
+        </div>
+        <div class="metallo-desc" id="tut-d"></div>
+        <div class="metallo-analogy" id="tut-a"></div>
+      </div>
+
+      <!-- Dynamic 30 Modules Container -->
+      <div id="mods"></div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM NAVIGATION BAR (EXACT IMAGE STYLE) -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="b-tab" id="bn-path" onclick="showPathView()">
+        <div class="b-tab-ico">▶</div>
+        <span>مسار التعلم</span>
+      </button>
+      <button class="b-tab active" id="bn-phase" onclick="openModule('m01')">
+        <div class="b-tab-ico">📈</div>
+        <span>مخطط الطور</span>
+      </button>
+      <button class="b-tab" id="bn-tensile" onclick="openModule('m08')">
+        <div class="b-tab-ico">🦾</div>
+        <span>مختبر الشد</span>
+      </button>
+      <button class="b-tab" id="bn-dict" onclick="openModule('m30')">
+        <div class="b-tab-ico">📚</div>
+        <span>الموسوعة</span>
+      </button>
+      <button class="b-tab" onclick="toggleDrawer(true)">
+        <div class="b-tab-ico">⚙️</div>
+        <span>كل الوحدات (30)</span>
+      </button>
+    </div>
+  </nav>
+
+<!-- =====================================================================
+     MetalloPro v6.0 — HTML partials
+     زر الثيم ينتقل إلى الهيدر، ومحتوى النسخ الاحتياطي ينتقل إلى الفهرس
+     (js/v6/08-backup.js و js/v6/boot.js تتولى ذلك عند التحميل)
+     ===================================================================== -->
+
+<button type="button" id="v6-theme-btn" class="menu-btn v6-theme-btn" title="تبديل الوضع النهاري/الليلي">🌙</button>
+
+<div id="v6-backup" class="v6-backup">
+  <div class="v6-backup-h">💾 النسخ الاحتياطي للتقدم</div>
+  <div class="v6-backup-row">
+    <button type="button" class="v6-btn" id="v6-exp">⬇️ تصدير تقدمي (JSON)</button>
+    <button type="button" class="v6-btn" id="v6-imp">⬆️ استعادة التقدم</button>
+  </div>
+  <input type="file" id="v6-file" accept="application/json,.json" hidden>
+</div>
+
+<div id="v6-modal" class="v6-modal" hidden>
+  <div class="card v6-modal-box" role="dialog" aria-modal="true" aria-labelledby="v6-modal-t">
+    <h3 id="v6-modal-t">📄 بيانات تقرير التجربة</h3>
+    <label for="v6-name">اسم الطالب</label>
+    <input type="text" id="v6-name" maxlength="60" placeholder="مثال: أحمد محمد">
+    <div class="v6-modal-actions">
+      <button type="button" class="v6-btn" id="v6-m-cancel">إلغاء</button>
+      <button type="button" class="v6-btn v6-primary" id="v6-m-ok">فتح التقرير للطباعة</button>
+    </div>
+  </div>
+</div>
+<script src="js/core/utils.js"></script>
+<script src="js/core/canvas.js"></script>
+<script src="js/core/registry.js"></script>
+<script src="js/data/duo-units.js"></script>
+<script src="js/data/lessons-extra.js"></script>
+<script src="js/data/more-cards.js"></script>
+<script src="js/duo/review.js"></script>
+<script src="js/duo/lesson-engine.js"></script>
+<script src="js/labs/shared-fe.js"></script>
+<script src="js/labs/I-thermo.js"></script>
+<script src="js/labs/II-crystal-mech.js"></script>
+<script src="js/labs/III-heat-processing.js"></script>
+<script src="js/labs/IV-corrosion-forensics.js"></script>
+<script src="js/labs/V-advanced.js"></script>
+<script src="js/labs/VI-encyclopedia.js"></script>
+<script src="js/labs/VI-cases.js"></script>
+<script src="js/labs/VI-materials.js"></script>
+<script src="js/registry/mods-01-30.js"></script>
+<script src="js/registry/mods-31-34.js"></script>
+<script src="js/core/shell.js"></script>
+<script src="js/v6/00-core.js"></script>
+<script src="js/v6/01-theme.js"></script>
+<script src="js/v6/02-fullscreen.js"></script>
+<script src="js/v6/03-spin.js"></script>
+<script src="js/v6/04-lab-enhance.js"></script>
+<script src="js/v6/05-export.js"></script>
+<script src="js/v6/06-deep-link.js"></script>
+<script src="js/v6/07-speech.js"></script>
+<script src="js/v6/08-backup.js"></script>
+<script src="js/v6/m35-ttt.js"></script>
+<script src="js/v6/99-boot.js"></script>
+</body>
+</html>
