@@ -2517,17 +2517,39 @@ function init07(root) {
 }
 
 /* ===================== MODULE 08: TENSILE TEST (WITH 3D METALLIC RIG & SHADED TOUGHNESS) ===================== */
+/* ---------- قاعدة المواد (قيم نموذجية للتعليم من مراجع ASM/ASTM) ----------
+ * g: الفئة | E: GPa | sy: إجهاد الخضوع MPa | uts: مقاومة الشد القصوى MPa
+ * el: الاستطالة عند الكسر (كسر) | brittle: مادة هشة (بلا منطقة لدنة) | fk: نقطة الكسر على المنحنى */
 const TM = {
-  mild: { n: 'فولاذ طري AISI 1018', E: 205, sy: 250, uts: 420, el: 0.25 },
-  al: { n: 'ألمنيوم 7075-T6', E: 72, sy: 505, uts: 570, el: 0.11 },
-  ti: { n: 'تيتانيوم Ti-6Al-4V', E: 114, sy: 880, uts: 950, el: 0.14 }
+  mild:     { g: 'فولاذ',     n: 'فولاذ طري AISI 1018',                    E: 205, sy: 250,  uts: 420,  el: 0.25 },
+  c1045:    { g: 'فولاذ',     n: 'فولاذ كربوني AISI 1045 (مُطبَّع)',         E: 200, sy: 310,  uts: 570,  el: 0.16 },
+  s4140:    { g: 'فولاذ',     n: 'فولاذ سبائكي AISI 4140 (معالج QT)',         E: 205, sy: 950,  uts: 1100, el: 0.14 },
+  ss304:    { g: 'فولاذ',     n: 'فولاذ مقاوم للصدأ AISI 304 (مُلدَّن)',      E: 193, sy: 215,  uts: 505,  el: 0.55 },
+  castiron: { g: 'حديد زهر',  n: 'حديد زهر رمادي ASTM A48 Class 30',        E: 110, sy: 210,  uts: 210,  el: 0.005, brittle: true, fk: 0.5 },
+  al6061:   { g: 'ألمنيوم',   n: 'ألمنيوم 6061-T6',                         E: 69,  sy: 276,  uts: 310,  el: 0.12 },
+  al:       { g: 'ألمنيوم',   n: 'ألمنيوم طائرات 7075-T6',                  E: 72,  sy: 505,  uts: 570,  el: 0.11 },
+  cu:       { g: 'نحاس',      n: 'نحاس نقي C11000 (مُلدَّن)',                E: 117, sy: 69,   uts: 220,  el: 0.45 },
+  brass:    { g: 'نحاس',      n: 'نحاس أصفر 70/30 (مُلدَّن)',                E: 110, sy: 75,   uts: 300,  el: 0.60 },
+  mg:       { g: 'مغنيسيوم',  n: 'مغنيسيوم AZ31B-H24',                      E: 45,  sy: 200,  uts: 260,  el: 0.12 },
+  ti2:      { g: 'تيتانيوم',  n: 'تيتانيوم تجاري نقي Grade 2',              E: 103, sy: 275,  uts: 345,  el: 0.20 },
+  ti:       { g: 'تيتانيوم',  n: 'تيتانيوم Ti-6Al-4V',                      E: 114, sy: 880,  uts: 950,  el: 0.14 },
+  inc:      { g: 'سبائك خاصة', n: 'سوبر ألوى Inconel 718 (معالج بالتعتيق)',   E: 200, sy: 1034, uts: 1275, el: 0.12 }
 };
-function drawTensileRig(cv, f) {
+
+/**
+ * يرسم جهاز الشد: الفكّان، والعينة، والعنق، والكسر.
+ * @param {HTMLCanvasElement} cv
+ * @param {number} f  نسبة الانفعال المطبّق (0..1)
+ * @param {object} m  بيانات المادة من TM
+ */
+function drawTensileRig(cv, f, m) {
   const ctx = prep(cv);
   const W = cv._W, H = cv._H, cx = W / 2;
-  const broken = f >= 0.96;
+  const fk = m.fk || 0.96;                       // نقطة الكسر
+  const broken = f >= fk;
+  const drift = clamp((f - fk) / 0.04, 0, 1);    // انفصال القطعتين تدريجياً بعد الكسر
 
-  // Metallic Frame Columns
+  // أعمدة الإطار
   const colGrad = ctx.createLinearGradient(35, 0, 70, 0);
   colGrad.addColorStop(0, '#334155');
   colGrad.addColorStop(0.5, '#94a3b8');
@@ -2536,24 +2558,27 @@ function drawTensileRig(cv, f) {
   ctx.fillRect(42, 24, 24, H - 48);
   ctx.fillRect(W - 66, 24, 24, H - 48);
 
-  // Crossheads
+  // الرؤوس المتحركة والفكّان
   ctx.fillStyle = '#475569';
   ctx.fillRect(28, 12, W - 56, 22);
   ctx.fillRect(28, H - 34, W - 56, 22);
-
-  // Grips
   ctx.fillStyle = '#64748b';
   ctx.fillRect(cx - 28, 34, 56, 24);
   ctx.fillRect(cx - 28, H - 58, 56, 24);
 
-  // Glowing Cyan Specimen
-  const topY = 56, botY = H - 56, midY = (topY + botY) / 2;
-  const neck = f > 0.5 ? (f - 0.5) / 0.5 : 0;
-  const wEnd = 36, wMid = 28 * (1 - 0.6 * neck);
+  // العينة: تستطيل قليلاً مع الانفعال
+  const topY0 = 56, botY0 = H - 56, midY = (topY0 + botY0) / 2;
+  const stretch = 1 + 0.06 * Math.min(f, fk);
+  const half = ((botY0 - topY0) / 2) * stretch;
+  const topY = midY - half, botY = midY + half;
+
+  // العنق: يبدأ بعد نقطة UTS (≈0.6) ويتعمّق تدريجياً حتى الكسر، والمواد الهشة بلا عنق
+  const neck = m.brittle ? 0 : clamp((f - 0.6) / (fk - 0.6), 0, 1);
+  const wEnd = 36, wMid = 28 * (1 - 0.55 * Math.pow(neck, 1.3));
 
   ctx.save();
   ctx.shadowColor = '#22d3ee';
-  ctx.shadowBlur = 24;
+  ctx.shadowBlur = 20 + 6 * Math.sin(performance.now() / 500);   // توهّج ينبض ببطء
   const specGrad = ctx.createLinearGradient(cx - 18, topY, cx + 18, botY);
   specGrad.addColorStop(0, '#0284c7');
   specGrad.addColorStop(0.5, '#67e8f9');
@@ -2572,19 +2597,25 @@ function drawTensileRig(cv, f) {
     ctx.fill();
     ctx.stroke();
   } else {
-    const gap = 10;
-    ctx.fillRect(cx - wMid / 2, topY, wMid, (botY - topY) / 2 - gap);
-    ctx.fillRect(cx - wMid / 2, midY + gap, wMid, (botY - topY) / 2 - gap);
+    const gap = 6 + 26 * drift;
+    const d = 12 * drift;                                       // ابتعاد القطعتين
+    ctx.fillRect(cx - wMid / 2, topY - d, wMid, midY - gap / 2 - (topY - d));
+    ctx.fillRect(cx - wMid / 2, midY + gap / 2, wMid, (botY + d) - (midY + gap / 2));
   }
   ctx.restore();
 
-  // Status LEDs on column
+  // مؤشرات الحالة
   ctx.fillStyle = broken ? '#ef4444' : '#64748b';
   ctx.fillRect(W - 58, H - 76, 8, 8);
   ctx.fillStyle = !broken ? '#22c55e' : '#64748b';
   ctx.fillRect(W - 58, H - 62, 8, 8);
 }
+
 function init08(root) {
+  const groups = {};
+  Object.keys(TM).forEach(k => { const g = TM[k].g; (groups[g] = groups[g] || []).push(`<option value="${k}">${TM[k].n}</option>`); });
+  const opts = Object.keys(groups).map(g => `<optgroup label="${g}">${groups[g].join('')}</optgroup>`).join('');
+
   root.innerHTML = `<div class="g3">
     <div class="card">
       <div class="card-h"><h3>جهاز الشد الهيدروليكي</h3><span class="tag">ASTM E8</span></div>
@@ -2596,26 +2627,28 @@ function init08(root) {
     </div>
     <div class="card sy">
       <h4>اختيار المادة وتشغيل الاختبار</h4>
-      <select id="r08m">
-        <option value="mild">فولاذ طري AISI 1018</option>
-        <option value="al">ألمنيوم طائرات 7075-T6</option>
-        <option value="ti">تيتانيوم Ti-6Al-4V</option>
-      </select>
-      ${sl('r08e', 'نسبة الانفعال المطبق ε', 0, 100, 1, 68, 'c-cy', ' %')}
+      <select id="r08m">${opts}</select>
+      ${sl('r08e', 'نسبة الانفعال المطبق ε', 0, 100, 0.1, 68, 'c-cy', ' %')}
+      ${sl('r08s', 'سرعة التشغيل', 0.2, 2, 0.1, 1, 'c-am', '×')}
       <div style="display:flex;gap:10px">
         <button id="b08play" class="btn">▶ تشغيل الاختبار</button>
         <button id="b08rst" class="btn2">↻ إعادة</button>
       </div>
+      <p class="hint">القيم نموذجية للتعليم، وتختلف فعلياً حسب المعالجة الحرارية والمورّد.</p>
       <div id="o08" class="sy"></div>
-      <div class="formula acad-only">σ = E·ε (Elastic) | σ = K·εⁿ (Hollomon Plastic)</div>
+      <div class="formula acad-only">σ = E·ε (Elastic) | σ = K·εⁿ (Hollomon Plastic) | ε_eng = ΔL / L₀</div>
     </div>
   </div>`;
+
   const cv = $('cv08'), cvRig = $('cv08rig');
-  let timer = null;
+  const BASE_RATE = 100 / 12;                    // %/ثانية عند السرعة 1× (اختبار كامل ≈ 12 ثانية)
+
   const draw = () => {
-    const m = TM[$('r08m').value], f = val('r08e') / 100;
+    const key = $('r08m').value, m = TM[key], f = val('r08e') / 100;
+    const fk = m.fk || 0.96;
     setV('r08e', (f * 100).toFixed(0) + ' %');
-    drawTensileRig(cvRig, f);
+    setV('r08s', val('r08s').toFixed(1) + '×');
+    drawTensileRig(cvRig, f, m);
 
     const c2 = prep(cv);
     const cw = cv._W, ch = cv._H;
@@ -2631,24 +2664,23 @@ function init08(root) {
     c2.fillText('σ', x0 - 18, y1 + 8);
     c2.fillText('ε', x1 - 6, y0 + 18);
 
+    // شكل منحنى موحّد مُطبَّع: مرونة ← خضوع ← UTS ← عنق ← كسر (للمواد الهشة: خط مستقيم حتى الكسر)
     const curvePt = u => {
       const px = x0 + u * (x1 - x0 - 16);
       let syNorm;
-      if (u <= 0.18) syNorm = (u / 0.18) * 0.48;
+      if (m.brittle) syNorm = 0.92 * Math.min(u / fk, 1);
+      else if (u <= 0.18) syNorm = (u / 0.18) * 0.48;
       else if (u <= 0.72) syNorm = 0.48 + 0.44 * Math.sin(((u - 0.18) / 0.54) * (Math.PI / 2));
       else syNorm = 0.92 - 0.16 * Math.pow((u - 0.72) / 0.28, 2);
       return [px, y0 - syNorm * (y0 - y1 - 10)];
     };
 
-    // Shaded green toughness region
-    const maxU = Math.min(f, 0.72);
+    // منطقة المتانة المظللة (حتى الانفعال الحالي)
+    const maxU = Math.min(f, fk, m.brittle ? fk : 0.72);
     c2.save();
     c2.beginPath();
     c2.moveTo(x0, y0);
-    for (let i = 0; i <= 60; i++) {
-      const p = curvePt((i / 60) * maxU);
-      c2.lineTo(p[0], p[1]);
-    }
+    for (let i = 0; i <= 60; i++) { const p = curvePt((i / 60) * maxU); c2.lineTo(p[0], p[1]); }
     const pEnd = curvePt(maxU);
     c2.lineTo(pEnd[0], y0);
     c2.closePath();
@@ -2659,56 +2691,79 @@ function init08(root) {
     c2.fill();
     c2.restore();
 
-    // Green plastic curve + Orange necking curve
-    c2.lineWidth = 3;
-    c2.strokeStyle = '#10b981';
-    c2.beginPath();
-    for (let i = 0; i <= 72; i++) {
-      const p = curvePt(i / 100);
-      if (i === 0) c2.moveTo(p[0], p[1]); else c2.lineTo(p[0], p[1]);
-    }
-    c2.stroke();
+    // قطعة منحنى من a إلى b بلون معين
+    const seg = (a, b, col) => {
+      c2.strokeStyle = col; c2.lineWidth = 3; c2.beginPath();
+      for (let i = 0; i <= 40; i++) {
+        const p = curvePt(a + (b - a) * i / 40);
+        if (i === 0) c2.moveTo(p[0], p[1]); else c2.lineTo(p[0], p[1]);
+      }
+      c2.stroke();
+    };
+    const knee = Math.min(fk, 0.72);
+    seg(0, knee, '#10b981');                                  // الجزء اللدن الأخضر
+    if (fk > knee) seg(knee, fk, '#f97316');                  // العنق البرتقالي
 
-    c2.strokeStyle = '#f97316';
-    c2.beginPath();
-    for (let i = 72; i <= 100; i++) {
-      const p = curvePt(i / 100);
-      if (i === 72) c2.moveTo(p[0], p[1]); else c2.lineTo(p[0], p[1]);
+    const pFrac = curvePt(fk), pCur = curvePt(Math.min(f, fk));
+    if (!m.brittle) {
+      const pYield = curvePt(0.18), pUTS = curvePt(0.72);
+      dot(c2, pYield[0], pYield[1], 4.5, '#eab308');
+      dot(c2, pUTS[0], pUTS[1], 5, '#f97316');
     }
-    c2.stroke();
-
-    const pYield = curvePt(0.18), pUTS = curvePt(0.72), pFrac = curvePt(1.0), pCur = curvePt(f);
-    dot(c2, pYield[0], pYield[1], 4.5, '#eab308');
-    dot(c2, pUTS[0], pUTS[1], 5, '#f97316');
     dot(c2, pCur[0], pCur[1], 6, '#22d3ee');
 
     c2.fillStyle = '#fb923c';
     c2.font = 'bold 12px "Cairo", sans-serif';
     c2.fillText('بالكسر', pFrac[0] - 32, pFrac[1] + 20);
 
-    const sc = f <= 0.18 ? m.sy * (f / 0.18) : f <= 0.72 ? m.sy + (m.uts - m.sy) * ((f - 0.18) / 0.54) : m.uts * 0.85;
-    $('o08').innerHTML = stat('معامل المرونة E', m.E + ' GPa', 'c-cy') + stat('إجهاد الخضوع σy', m.sy + ' MPa', 'c-em') +
-      stat('مقاومة الشد القصوى UTS', m.uts + ' MPa', 'c-am') + stat('الإجهاد اللحظي', sc.toFixed(0) + ' MPa', 'c-sl');
+    const sc = m.brittle
+      ? m.uts * Math.min(1, f / fk)
+      : f <= 0.18 ? m.sy * (f / 0.18) : f <= 0.72 ? m.sy + (m.uts - m.sy) * ((f - 0.18) / 0.54) : m.uts * 0.85;
+    $('o08').innerHTML = stat('معامل المرونة E', m.E + ' GPa', 'c-cy') +
+      stat('إجهاد الخضوع σy', m.sy + ' MPa', 'c-em') +
+      stat('مقاومة الشد القصوى UTS', m.uts + ' MPa', 'c-am') +
+      stat('الاستطالة عند الكسر', (m.el * 100).toFixed(1) + ' %', 'c-mu') +
+      stat('الإجهاد اللحظي', sc.toFixed(0) + ' MPa', 'c-sl');
+  };
+
+  // حركة بالزمن الحقيقي: سرعة ثابتة مضروبة في منزلق السرعة، وتتوقف تلقائياً إذا أُخفي المختبر
+  let raf = null, last = 0;
+  const stop = () => {
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+    $('b08play').textContent = '▶ تشغيل الاختبار';
+  };
+  const frame = now => {
+    if (!cvRig.offsetParent) { stop(); return; }
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    const v = val('r08e') + dt * BASE_RATE * val('r08s');
+    if (v >= 100) {
+      $('r08e').value = 100; draw(); stop(); addXP(15);
+      return;
+    }
+    $('r08e').value = v.toFixed(2);
+    draw();
+    raf = requestAnimationFrame(frame);
   };
 
   $('b08play').onclick = () => {
-    if (timer) { clearInterval(timer); timer = null; $('b08play').textContent = '▶ تشغيل الاختبار'; return; }
+    if (raf) { stop(); return; }
     if (val('r08e') >= 98) $('r08e').value = 0;
     $('b08play').textContent = '⏸ إيقاف مؤقت';
-    timer = setInterval(() => {
-      let v = val('r08e') + 1.5;
-      if (v >= 100) { v = 100; clearInterval(timer); timer = null; $('b08play').textContent = '▶ تشغيل الاختبار'; addXP(15); }
-      $('r08e').value = v;
-      draw();
-    }, 35);
+    last = performance.now();
+    raf = requestAnimationFrame(frame);
   };
   $('b08rst').onclick = () => {
-    if (timer) { clearInterval(timer); timer = null; }
-    $('b08play').textContent = '▶ تشغيل الاختبار';
+    stop();
     $('r08e').value = 18;
     draw();
   };
-  $('r08m').onchange = draw; $('r08e').oninput = draw; draw(); return draw;
+  $('r08m').onchange = draw;
+  $('r08e').oninput = draw;
+  $('r08s').oninput = draw;
+  draw();
+  return draw;
 }
 
 /* ===================== MODULE 09: HALL-PETCH STRENGTHENING ===================== */
