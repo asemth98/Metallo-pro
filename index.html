@@ -863,6 +863,49 @@ body.theme-light .v6-spk { background: #ffffff; }
 }
 .v6-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
+/* =====================================================================
+ * v6.0 — إصلاحات الجوال والوضع النهاري لقسم المسار والدروس
+ * ===================================================================== */
+
+/* 1) الدرج الجانبي: مخفي تماماً عندما يكون مغلقاً، فلا يتسرب ظله أو لونه إلى الشاشة */
+.drawer:not(.open) { visibility: hidden; box-shadow: none; }
+.drawer.open { visibility: visible; }
+html, body { overflow-x: hidden; }
+
+/* 2) قسم المسار: لوحة فاتحة في الوضع النهاري */
+body.theme-light .path-wrapper {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  border-color: #cbd5e1;
+  box-shadow: 0 12px 30px -14px rgba(15,23,42,.2);
+}
+body.theme-light .duo-title { background: #ffffff; border-color: #cbd5e1; color: #0f172a; }
+body.theme-light .duo-node.locked .duo-circle { background: #e2e8f0 !important; color: #94a3b8 !important; border-color: #cbd5e1; box-shadow: 0 6px 0 #cbd5e1; }
+body.theme-light .duo-circle { border-color: rgba(15,23,42,.12); }
+
+/* 3) شاشة الدرس وبطاقات الأسئلة والخيارات */
+body.theme-light .lesson-modal { background: rgba(248,250,252,.97); }
+body.theme-light .prog-track { background: #e2e8f0; border-color: #cbd5e1; }
+body.theme-light .duo-card { background: #ffffff; border-color: #cbd5e1; box-shadow: 0 12px 30px -14px rgba(15,23,42,.2); }
+body.theme-light .duo-mascot-box { background: #ecfdf5; border-color: #10b981; }
+body.theme-light .duo-opt { background: #ffffff; border-color: #cbd5e1; color: #0f172a; }
+body.theme-light .duo-opt:hover { background: #f0f9ff; border-color: #0ea5e9; }
+body.theme-light .duo-opt.correct { background: #d1fae5; border-color: #10b981; color: #065f46; }
+body.theme-light .duo-opt.wrong { background: #ffe4e6; border-color: #f43f5e; color: #9f1239; }
+
+/* 4) ألوان النص المكتوبة inline في lesson-engine.js و review.js: نسخ داكنة مقروءة على الفاتح */
+body.theme-light [style*="background:#091326"],
+body.theme-light [style*="background:#1e293b"],
+body.theme-light [style*="background:#0b1324"],
+body.theme-light [style*="background:#111b30"] { background: #ffffff !important; }
+body.theme-light [style*="border:1px solid #334155"] { border-color: #cbd5e1 !important; }
+body.theme-light [style*="color:#6ee7b7"],
+body.theme-light [style*="color:#a7f3d0"],
+body.theme-light [style*="color:#34d399"] { color: #047857 !important; }
+body.theme-light [style*="color:#38bdf8"] { color: #0369a1 !important; }
+body.theme-light [style*="color:#fbbf24"],
+body.theme-light [style*="color:#fde68a"] { color: #b45309 !important; }
+body.theme-light [style*="color:#fda4af"] { color: #be123c !important; }
+
 </style>
 </head>
 <body class="mode-layman">
